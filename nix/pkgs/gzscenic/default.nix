@@ -11,7 +11,8 @@
   numpy,
   scenic,
   requests,
-  pycollada
+  pycollada,
+  pywavefront
 }:
 buildPythonPackage rec {
   pname = "gzscenic";
@@ -40,6 +41,7 @@ buildPythonPackage rec {
     dotmap
     requests
     pycollada
+    pywavefront
   ];
 
   nativeCheckInputs = [

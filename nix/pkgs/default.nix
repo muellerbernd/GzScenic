@@ -4,8 +4,9 @@ with self.lib; let
     prevPython
     // {
       pkgs = prevPython.pkgs.overrideScope (pyFinal: pyPrev: {
-        scenic = pyFinal.callPackage ./scenic.nix {};
-        gzscenic = pyFinal.callPackage ./gzscenic.nix {};
+        scenic = pyFinal.callPackage ./scenic {};
+        gzscenic = pyFinal.callPackage ./gzscenic {};
+        pywavefront = pyFinal.callPackage ./pywavefront {};
       });
     };
 in {
