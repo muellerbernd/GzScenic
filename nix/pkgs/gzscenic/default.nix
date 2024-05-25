@@ -12,16 +12,14 @@
   scenic,
   requests,
   pycollada,
-  pywavefront
+  pywavefront,
 }:
-buildPythonPackage rec {
+buildPythonPackage {
   pname = "gzscenic";
   version = "0.1dev";
   pyproject = true;
 
-  src = ./.;
-  postPatch = ''
-  '';
+  src = ../../../.;
 
   buildInputs = [
     setuptools
@@ -48,10 +46,9 @@ buildPythonPackage rec {
   ];
 
   meta = {
-    changelog = "https://github.com/pytest-dev/pytest/releases/tag/${version}";
-    description = "Framework for writing tests";
-    homepage = "https://github.com/pytest-dev/pytest";
-    license = lib.licenses.mit;
-    maintainers = with lib.maintainers; [domenkozar lovek323 madjar lsix];
+    description = "GzScenic";
+    homepage = "https://github.com/squaresLab/GzScenic";
+    license = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [muellerbernd];
   };
 }

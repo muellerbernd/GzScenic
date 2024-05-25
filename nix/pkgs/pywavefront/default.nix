@@ -1,19 +1,30 @@
 {
   lib,
   buildPythonPackage,
-  fetchPypi,
+  fetchFromGitHub,
+  setuptools,
+  pyglet,
 }:
 buildPythonPackage rec {
   pname = "PyWavefront";
-  version = "1.1.3";
+  version = "1.3.3";
   pyproject = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    hash = "";
+  # src = fetchPypi {
+  #   inherit pname version;
+  #   hash = "";
+  # };
+  src = fetchFromGitHub {
+    owner = "pywavefront";
+    repo = "PyWavefront";
+    rev = "${version}";
+    hash = "sha256-ci40L2opJ+NYYtaAeX1Y5pzkdK+loFspTriX/xv4KR8=";
   };
 
-  buildInputs = [
+  nativeBuildInputs = [setuptools];
+
+  propagatedBuildInputs = [
+    pyglet
   ];
 
   nativeCheckInputs = [
