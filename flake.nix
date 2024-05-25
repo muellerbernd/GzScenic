@@ -17,9 +17,14 @@
       (system: let
         pkgs = import nixpkgs {
           inherit system;
-          overlays = [self.overlays.default];
+          # overlays = [self.overlays.default];
         };
+        gzscenic =
+          pkgs.callPackage ./gzscenic.nix {
+          };
       in {
+        packages.gzscenic = gzscenic;
+        packages.default = gzscenic;
         devShells = {
           default = import ./shell.nix {inherit pkgs;};
         };
