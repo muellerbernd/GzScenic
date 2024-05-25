@@ -17,19 +17,20 @@
       (system: let
         pkgs = import nixpkgs {
           inherit system;
-          # overlays = [self.overlays.default];
+          overlays = [self.overlays.default];
         };
-        gzscenic =
-          pkgs.callPackage ./gzscenic.nix {
-          };
+        # scenic =
+        #   pkgs.python3Packages.callPackage ./scenic.nix {
+        #   };
       in {
-        packages.gzscenic = gzscenic;
-        packages.default = gzscenic;
+        # packages.gzscenic = gzscenic;
+        # packages.scenic = scenic;
+        packages.default = pkgs.python3Packages.gzscenic;
         devShells = {
-          default = import ./shell.nix {inherit pkgs;};
+          default = import ./nix/shell.nix {inherit pkgs;};
         };
       })
       // {
-        # overlays.default = import ./overlay.nix;
+        overlays.default = import ./overlay.nix;
       };
 }
