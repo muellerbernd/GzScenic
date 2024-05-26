@@ -1,23 +1,22 @@
 ### Top-level functionality of the scenic package as a script:
 ### load a scenario and generate scenes in an infinite loop.
 
-import logging
-import sys
-import time
 import argparse
-import random
 import importlib.metadata
-from shutil import copy
+import logging
 import os
+import random
+import time
+
+import scenic.core.errors as errors
+import scenic.syntax.translator as translator
 import yaml
 
-import scenic.syntax.translator as translator
-import scenic.core.errors as errors
-from scenic.core.simulators import SimulationCreationError
-
-from .translate import scene_to_sdf
 from .model_generator import generate_model
+from .translate import scene_to_sdf
 from .utils import load_module
+
+# from scenic.core.simulators import SimulationCreationError
 
 
 logger = logging.getLogger(__name__)
@@ -27,64 +26,107 @@ logger.setLevel(logging.DEBUG)
 def setup_logging(verbose: bool = False) -> None:
     log_to_stdout = logging.StreamHandler()
     log_to_stdout.setLevel(logging.DEBUG if verbose else logging.INFO)
-    logging.getLogger('gzscenic').addHandler(log_to_stdout)
+    logging.getLogger("gzscenic").addHandler(log_to_stdout)
 
 
 def setup_arg_parser():
 
-    parser = argparse.ArgumentParser(prog='gzscenic', add_help=False,
-                                     description='Sample from a Scenic scenario.')
-    
-    mainOptions = parser.add_argument_group('main options')
-    mainOptions.add_argument('-s', '--seed', help='random seed', type=int)
-    mainOptions.add_argument('--load', help='load a scenic file', type=str, default='')
-    mainOptions.add_argument('--dump', help='dump the scenic file', type=str, default='')
-    mainOptions.add_argument('--verbose', help='verbose logging',
-                             action='store_true')
-    mainOptions.add_argument('--noplt', action='store_true',
-                            help='do not create plots for scenes')
-    mainOptions.add_argument('-n', '--scenes-num', type=int,
-                            help='maximum number of scenes to generate. unlimited by default')
-    mainOptions.add_argument('-p', '--param', help='override a global parameter',
-                             nargs=2, default=[], action='append', metavar=('PARAM', 'VALUE'))
-    mainOptions.add_argument('-m', '--model', help='specify a Scenic world model', default=None)
-    mainOptions.add_argument('--scenario', default=None,
-                             help='name of scenario to run (if file contains multiple)')
-    
+    parser = argparse.ArgumentParser(
+        prog="gzscenic", add_help=False, description="Sample from a Scenic scenario."
+    )
+
+    mainOptions = parser.add_argument_group("main options")
+    mainOptions.add_argument("-s", "--seed", help="random seed", type=int)
+    mainOptions.add_argument("--load", help="load a scenic file", type=str, default="")
+    mainOptions.add_argument(
+        "--dump", help="dump the scenic file", type=str, default=""
+    )
+    mainOptions.add_argument("--verbose", help="verbose logging", action="store_true")
+    mainOptions.add_argument(
+        "--noplt", action="store_true", help="do not create plots for scenes"
+    )
+    mainOptions.add_argument(
+        "-n",
+        "--scenes-num",
+        type=int,
+        help="maximum number of scenes to generate. unlimited by default",
+    )
+    mainOptions.add_argument(
+        "-p",
+        "--param",
+        help="override a global parameter",
+        nargs=2,
+        default=[],
+        action="append",
+        metavar=("PARAM", "VALUE"),
+    )
+    mainOptions.add_argument(
+        "-m", "--model", help="specify a Scenic world model", default=None
+    )
+    mainOptions.add_argument(
+        "--scenario",
+        default=None,
+        help="name of scenario to run (if file contains multiple)",
+    )
+
     # Interactive rendering options
-    intOptions = parser.add_argument_group('static scene diagramming options')
-    intOptions.add_argument('-d', '--delay', type=float,
-                            help='loop automatically with this delay (in seconds) '
-                                 'instead of waiting for the user to close the diagram')
-    intOptions.add_argument('-z', '--zoom', help='zoom expansion factor (default 1)',
-                            type=float, default=1)
-    
+    intOptions = parser.add_argument_group("static scene diagramming options")
+    intOptions.add_argument(
+        "-d",
+        "--delay",
+        type=float,
+        help="loop automatically with this delay (in seconds) "
+        "instead of waiting for the user to close the diagram",
+    )
+    intOptions.add_argument(
+        "-z", "--zoom", help="zoom expansion factor (default 1)", type=float, default=1
+    )
+
     # Debugging options
-    debugOpts = parser.add_argument_group('Scenic debugging options')
-    debugOpts.add_argument('--show-params', help='show values of global parameters',
-                           action='store_true')
-    debugOpts.add_argument('-b', '--full-backtrace', help='show full internal backtraces',
-                           action='store_true')
-    debugOpts.add_argument('--pdb', action='store_true',
-                           help='enter interactive debugger on errors (implies "-b")')
-    ver = importlib.metadata.version('scenic')
-    debugOpts.add_argument('--version', action='version', version=f'Scenic {ver}',
-                           help='print Scenic version information and exit')
-    debugOpts.add_argument('--dump-initial-python', help='dump initial translated Python',
-                           action='store_true')
-    debugOpts.add_argument('--dump-ast', help='dump final AST', action='store_true')
-    debugOpts.add_argument('--dump-python', help='dump Python equivalent of final AST',
-                           action='store_true')
-    debugOpts.add_argument('--no-pruning', help='disable pruning', action='store_true')
-    
-    parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
-                        help=argparse.SUPPRESS)
-    
+    debugOpts = parser.add_argument_group("Scenic debugging options")
+    debugOpts.add_argument(
+        "--show-params", help="show values of global parameters", action="store_true"
+    )
+    debugOpts.add_argument(
+        "-b",
+        "--full-backtrace",
+        help="show full internal backtraces",
+        action="store_true",
+    )
+    debugOpts.add_argument(
+        "--pdb",
+        action="store_true",
+        help='enter interactive debugger on errors (implies "-b")',
+    )
+    ver = importlib.metadata.version("scenic")
+    debugOpts.add_argument(
+        "--version",
+        action="version",
+        version=f"Scenic {ver}",
+        help="print Scenic version information and exit",
+    )
+    debugOpts.add_argument(
+        "--dump-initial-python",
+        help="dump initial translated Python",
+        action="store_true",
+    )
+    debugOpts.add_argument("--dump-ast", help="dump final AST", action="store_true")
+    debugOpts.add_argument(
+        "--dump-python", help="dump Python equivalent of final AST", action="store_true"
+    )
+    debugOpts.add_argument("--no-pruning", help="disable pruning", action="store_true")
+
+    parser.add_argument(
+        "-h", "--help", action="help", default=argparse.SUPPRESS, help=argparse.SUPPRESS
+    )
+
     # Positional arguments
-    parser.add_argument('scenicFile', help='a Scenic file to run', metavar='ScenicFILE')
-    parser.add_argument('input', help='path to input yaml file', type=str, metavar='inputFILE')
-    parser.add_argument('outputPath', help='Path to the output directory')
-    
+    parser.add_argument("scenicFile", help="a Scenic file to run", metavar="ScenicFILE")
+    parser.add_argument(
+        "input", help="path to input yaml file", type=str, metavar="inputFILE"
+    )
+    parser.add_argument("outputPath", help="Path to the output directory")
+
     # Parse arguments and set up configuration
     return parser.parse_args()
 
@@ -96,7 +138,9 @@ def generateScene(scenario, args):
         lambda: scenario.generate(verbosity=verbosity)
     )
     totalTime = time.time() - startTime
-    logger.debug(f'  Generated scene in {iterations} iterations, {totalTime:.4g} seconds.')
+    logger.debug(
+        f"  Generated scene in {iterations} iterations, {totalTime:.4g} seconds."
+    )
     if args.show_params:
         for param, value in scene.params.items():
             logger.debug(f'    Parameter "{param}": {value}')
@@ -118,38 +162,40 @@ def main():
     translator.verbosity = 3 if args.verbose else 1
     translator.usePruning = not args.no_pruning
     if args.seed is not None:
-        logger.info(f'Using random seed = {args.seed}')
+        logger.info(f"Using random seed = {args.seed}")
         random.seed(args.seed)
 
-    with open(args.input, 'r') as f:
-        input_objects = yaml.load(f)
+    with open(args.input, "r") as f:
+        input_objects = yaml.load(f, Loader=yaml.CLoader)
     input_dir = os.path.dirname(args.input)
-    models_dir = input_objects.get('models_dir', '')
+    models_dir = input_objects.get("models_dir", "")
 
     if not args.load:
-        load_module('gzscenic/base.scenic')
+        load_module("gzscenic/base.scenic")
         if args.dump:
-            with open(args.dump, 'w') as f:
-                f.write('from gzscenic.base import *\n\n')
-        for obj in input_objects['models']:
+            with open(args.dump, "w") as f:
+                f.write("from gzscenic.base import *\n\n")
+        for obj in input_objects["models"]:
             print(generate_model(obj, input_dir, models_dir, args.dump))
     else:
-        if args.load.rpartition('.')[-1] not in ['sc', 'scenic']:
-            raise Exception('The file to be loaded needs to be .sc or .scenic')
+        if args.load.rpartition(".")[-1] not in ["sc", "scenic"]:
+            raise Exception("The file to be loaded needs to be .sc or .scenic")
         load_module(args.load)
 
     # Load scenario from file
-    logger.info('Beginning scenario construction...')
+    logger.info("Beginning scenario construction...")
     startTime = time.time()
     scenario = errors.callBeginningScenicTrace(
-        lambda: translator.scenarioFromFile(args.scenicFile,
-                                            params=dict(args.param),
-                                            model=args.model,
-                                            scenario=args.scenario)
+        lambda: translator.scenarioFromFile(
+            args.scenicFile,
+            params=dict(args.param),
+            model=args.model,
+            scenario=args.scenario,
+        )
     )
     totalTime = time.time() - startTime
-    logger.info(f'Scenario constructed in {totalTime:.2f} seconds.')
-    
+    logger.info(f"Scenario constructed in {totalTime:.2f} seconds.")
+
     if not args.noplt:
         import matplotlib.pyplot as plt
     success_count = 0
@@ -163,6 +209,7 @@ def main():
                 plt.pause(delay)
                 plt.clf()
 
-        scene_to_sdf(scene, input_dir, input_objects['world'], models_dir, args.outputPath)
+        scene_to_sdf(
+            scene, input_dir, input_objects["world"], models_dir, args.outputPath
+        )
         success_count += 1
-

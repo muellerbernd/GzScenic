@@ -10,6 +10,7 @@ pkgs.mkShell {
     attrs
     scenic
     pyyaml
+    # ruyaml
     numpy
     decorator
     shapely
@@ -17,6 +18,7 @@ pkgs.mkShell {
     requests
     pycollada
     pywavefront
+    matplotlib
   ];
   # shellHook = ''
   # '';
